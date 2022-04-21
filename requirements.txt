@@ -9,3 +9,11 @@ matplotlib
 numpy
 pandas
 torch
+bitarray
+fastBPE
+hydra-core
+omegaconf
+regex
+requests
+sacremoses
+subword_nmt
