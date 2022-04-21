@@ -1,0 +1,11 @@
+black
+flake8
+loguru
+isort
+jupyterlab
+pre-commit
+pytest
+matplotlib
+numpy
+pandas
+torch
