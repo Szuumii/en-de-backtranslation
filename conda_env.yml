@@ -6,4 +6,4 @@ dependencies:
   - pandas
   - pip
   - pip:
-    - -r .
+    - -r ./requirements.txt
