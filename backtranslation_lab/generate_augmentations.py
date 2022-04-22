@@ -3,6 +3,8 @@ import os
 
 import backtranslation_lab.constants as C
 import torch
+from loguru import logger
+from tqdm import tqdm
 
 
 def parse_args() -> argparse.Namespace:
@@ -20,25 +22,69 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    logger.info("✌️ Parsing arguments")
     args = parse_args()
 
     # fmt: off
+    logger.info("🕸 Loading NMT models")
     en2de = torch.hub.load("pytorch/fairseq", C.EN2DE_NMT_MODEL_NAME, tokenizer="moses", bpe="fastbpe")
     de2en = torch.hub.load("pytorch/fairseq", C.DE2EN_NMT_MODEL_NAME, tokenizer="moses", bpe="fastbpe")
     # fmt: on
 
+    original_dset = []
+    en2de2en_augs = []
+    de2en2en_augs = []
+    logger.info("🤹‍♀️ Generating backtranslations")
     with open(args.en_sentences) as eng_dset, open(args.de_sentences) as de_dset:
-        for eng_sentence, de_sentence in zip(eng_dset, de_dset):
+        for eng_sentence, de_sentence in tqdm(zip(eng_dset, de_dset)):
             eng_sentence, de_sentence = eng_sentence.strip(), de_sentence.strip()
+            if eng_sentence == "" or de_sentence == "":
+                continue
+
+            original_dset.append((eng_sentence, de_sentence))
 
             translation = en2de.translate(eng_sentence, beam_size=args.de_lm_beam_size)
             backtranslation = de2en.translate(
                 translation, beam_size=args.en_lm_beam_size
             )
 
-            new_sample = (backtranslation, translation)
-            print(new_sample)
-            break
+            en2de2en_new_sample = (backtranslation, translation)
+            en2de2en_augs.append(en2de2en_new_sample)
+
+            translation = de2en.translate(de_sentence, beam_size=args.en_lm_beam_size)
+            backtranslation = en2de.translate(
+                translation, beam_size=args.de_lm_beam_size
+            )
+
+            de2en2de_new_sample = (translation, backtranslation)
+            de2en2en_augs.append(de2en2de_new_sample)
+
+    logger.info("💾 Saving to output directory")
+    os.makedirs(args.outdir, exist_ok=True)
+
+    logger.info("☝️ Saving original data")
+    with open(os.path.join(args.outdir, "original.en"), "w") as orig_en_f:
+        with open(os.path.join(args.outdir, "original.de"), "w") as orig_de_f:
+            for original_en, original_de in tqdm(original_dset):
+                orig_en_f.write(f"{original_en}\n")
+                orig_de_f.write(f"{original_de}\n")
+
+    logger.info("✌️ Saving en2de2en backtranslations")
+    with open(os.path.join(args.outdir, "backtranslations.en"), "w") as en_file:
+        with open(os.path.join(args.outdir, "backtranslations.de"), "w") as de_file:
+            for en_sentence, de_sentence in tqdm([*en2de2en_augs, *de2en2en_augs]):
+                en_file.write(f"{en_sentence}\n")
+                de_file.write(f"{de_sentence}\n")
+
+    logger.info("👯‍♀️ Removing duplications.")
+    augmented_dset = set([*original_dset, *de2en2en_augs, *en2de2en_augs])
+
+    logger.info("📚 Saving original dataset with backtranslations.")
+    with open(os.path.join(args.outdir, "aug_dataset.en"), "w") as en_file:
+        with open(os.path.join(args.outdir, "aug_dataset.de"), "w") as de_file:
+            for en_sentence, de_sentence in tqdm(augmented_dset):
+                en_file.write(f"{en_sentence}\n")
+                de_file.write(f"{de_sentence}\n")
 
 
 if __name__ == "__main__":
