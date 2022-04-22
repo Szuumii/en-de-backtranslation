@@ -83,7 +83,7 @@ def main() -> None:
                 en_file.write(f"{en_sentence}\n")
                 de_file.write(f"{de_sentence}\n")
 
-    logger.info("👯‍♀️ Removing duplications.")
+    logger.info("👯 Removing duplications.")
     augmented_dset = set([*original_dset, *de2en2en_augs, *en2de2en_augs])
 
     logger.info("📚 Saving original dataset with backtranslations.")
