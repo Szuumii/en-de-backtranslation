@@ -16,6 +16,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--outdir", type=str, required=True, help="Path to directory where new dataset will be saved.")
     parser.add_argument("--en_lm_beam_size", type=int, default=1, help="De-En language model beam size.")
     parser.add_argument("--de_lm_beam_size", type=int, default=1, help="En-De language model beam size.")
+    parser.add_argument("--num_sentences", type=int, default=10_000, help="Number of sentences picked to perform backtranslation.")
     # fmt: on
 
     return parser.parse_args()
@@ -34,14 +35,18 @@ def main() -> None:
     original_dset = []
     en2de2en_augs = []
     de2en2en_augs = []
-    logger.info("🤹‍♀️ Generating backtranslations")
+    logger.info("🤹 Generating backtranslations")
     with open(args.en_sentences) as eng_dset, open(args.de_sentences) as de_dset:
+        generated_backtranslations = 0
         for eng_sentence, de_sentence in tqdm(zip(eng_dset, de_dset)):
             eng_sentence, de_sentence = eng_sentence.strip(), de_sentence.strip()
             if eng_sentence == "" or de_sentence == "":
                 continue
 
             original_dset.append((eng_sentence, de_sentence))
+
+            if generated_backtranslations == args.num_sentences:
+                continue
 
             translation = en2de.translate(eng_sentence, beam_size=args.de_lm_beam_size)
             backtranslation = de2en.translate(
@@ -58,6 +63,8 @@ def main() -> None:
 
             de2en2de_new_sample = (translation, backtranslation)
             de2en2en_augs.append(de2en2de_new_sample)
+
+            generated_backtranslations += 1
 
     logger.info("💾 Saving to output directory")
     os.makedirs(args.outdir, exist_ok=True)
