@@ -1,3 +1,6 @@
+wandb
+data/binarized
+checkpoints
 .DS_Store
 .vscode/
 
